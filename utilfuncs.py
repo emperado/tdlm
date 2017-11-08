@@ -5,21 +5,76 @@ import operator
 import math
 import numpy as np
 from collections import defaultdict
+import constants as cf
 
 def update_vocab(symbol, idxvocab, vocabxid):
     idxvocab.append(symbol)
     vocabxid[symbol] = len(idxvocab) - 1 
 
-def gen_vocab(dummy_symbols, corpus, stopwords, vocab_minfreq, vocab_maxfreq, verbose):
+def gen_data(vocabxid, dummy_symbols, ignore, corpus):
+	sents = ([], []) #tuple of (tm_sents, lm_sents); each element is [(doc_id, seq_id, seq)]
+	docs = ([], []) 
+	sent_lens = [] #original sentence lengths
+	doc_lens = [] #original document lengths
+	docids = [] #original document IDs
+
+	for line_id, line in enumerate(codecs.open(corpus, "r", "utf-8")):
+		#every tm_sents starts with start symbol and end only after all the tokens
+		tm_sents=[]
+		tm_sents.append(vocabxid[cf.start_symbol])
+		lm_sents=[]
+
+		#**************improvisation can be here with tokenisations
+		for token in line.strip().split("\t"):
+			sent=[vocabxid[cf.start_symbol]]
+			for word in token.strip().split():
+				if word in vocabxid:
+					sent.append(vocabxid[word])
+					if (vocabxid[word] not in ignore):
+                        			tm_sents.append(vocabxid[word])
+				else:
+                    			sent.append(vocabxid[cf.unk_symbol])
+				sent.append(vocabxid[cf.end_symbol])
+			lm_sents.append(sent)
+
+		if len(tm_sents)>1:
+			docids.append(line_id)
+			sent_lens.extend([len(item)-1 for item in lm_sents])
+			doc_lens.append(len(tm_sents))
+
+			#truncating tm_sents into sizes of m1=3
+			m1=3
+			seq_id = 0
+			doc_seqs = []
+			for si in range(int(math.ceil(len(tm_sents) * 1.0 / m1))):
+				seq = tm_sents[si*m1:((si+1)*m1+1)]
+				if len(seq) > 1:
+					sents[0].append((len(docs[0]), seq_id, seq))
+					doc_seqs.append(seq[1:])
+					seq_id += 1
+			docs[0].append(doc_seqs)
+
+			m2=30
+			seq_id = 0
+			doc_seqs = []
+			for s in lm_sents:
+				for si in range(int(math.ceil(len(s) * 1.0 / m2))):
+					seq = s[si*m2:((si+1)*m2+1)]
+					if len(seq) > 1:
+						sents[1].append((len(docs[1]), seq_id, seq))
+						doc_seqs.append([w for w in seq[1:] if w not in ignore]) #output sentence = seq[1:]
+						seq_id += 1
+			docs[1].append(doc_seqs)
+
+	return sents, docs, docids, (np.mean(sent_lens), max(sent_lens), min(sent_lens), np.mean(doc_lens), max(doc_lens), min(doc_lens))
+
+def gen_vocab(dummy_symbols, corpus, stopwords, vocab_minfreq, vocab_maxfreq):
     idxvocab = []
     vocabxid = defaultdict(int)
     vocab_freq = defaultdict(int)
     for line_id, line in enumerate(codecs.open(corpus, "r", "utf-8")):
         for word in line.strip().split():
             vocab_freq[word] += 1
-        if line_id % 1000 == 0 and verbose:
-            sys.stdout.write(str(line_id) + " processed\r")
-            sys.stdout.flush()
 
     #add in dummy symbols into vocab
     for s in dummy_symbols:

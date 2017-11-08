@@ -34,15 +34,15 @@ stopwords="./data/stopwords.txt"
 # tag_embedding_size=0 #tag embedding dimension; 0 to disable tags
 
 #misc
-save_model=True #save model to output_dir/output_prefix
-verbose=True #print progress
+# save_model=True #save model to output_dir/output_prefix
+# verbose=True #print progress
 
 #input/output
 # output_dir="output"
 train_corpus="data/imdb/train.txt"
 #train_target="data/toy-train-label.txt" #comment out if unsupervised
 #train_tag="data/toy-train-tag.txt" #comment out if no document tags
-# valid_corpus="data/toy-valid.txt"
+valid_corpus="data/imdb/valid.txt"
 #valid_target="data/toy-valid-label.txt" #comment out if unsupervised
 #valid_tag="data/toy-valid-tag.txt" #comment out if no document tags
 # output_prefix="toy-model"
