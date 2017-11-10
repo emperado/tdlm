@@ -5,6 +5,7 @@ import gensim.models as g
 import constants as cf
 from utilfuncs import *
 from model import TopicModel as TM
+from model import LanguageModel as LM
 import torch
 
 def init_embedding(model, idxvocab):
@@ -17,28 +18,40 @@ def init_embedding(model, idxvocab):
 	return np.array(word_emb)
 
 def fetch_batch_and_train(sents, docs, tags, model, seq_len, i, (tm_costs, tm_words, lm_costs, lm_words), (m_tm_cost, m_tm_train, m_lm_cost,m_lm_train)):
-    x, y, m, d, t = get_batch(sents, docs, tags, i, cf.doc_len, seq_len, cf.tag_len, cf.batch_size, 0,(True if isinstance(model, LM) else False))
+	x, y, m, d, t = get_batch(sents, docs, tags, i, cf.doc_len, seq_len, cf.tag_len, cf.batch_size, 0,(True if isinstance(model, LM) else False))
+
+	global tm_train
 
 	if isinstance(model, LM):
 		if cf.topic_number > 0:
-			tm_cost, _, lm_cost, _ = sess.run([m_tm_cost, m_tm_train, m_lm_cost, m_lm_train], \
-		        {model.x: x, model.y: y, model.lm_mask: m, model.doc: d, model.tag: t})
+			tm_cost=m_tm_cost
+			lm_cost=m_lm_cost
+			# tm_cost, _, lm_cost, _ = sess.run([m_tm_cost, m_tm_train, m_lm_cost, m_lm_train], \
+		        # {model.x: x, model.y: y, model.lm_mask: m, model.doc: d, model.tag: t})
 		else:
 		    #pure lstm
-			tm_cost, _, lm_cost, _ = sess.run([m_tm_cost, m_tm_train, m_lm_cost, m_lm_train], \
-		        {model.x: x, model.y: y, model.lm_mask: m})
+			tm_cost=m_tm_cost
+			lm_cost=m_lm_cost
+			# tm_cost, _, lm_cost, _ = sess.run([m_tm_cost, m_tm_train, m_lm_cost, m_lm_train], \
+		        # {model.x: x, model.y: y, model.lm_mask: m})
 	else:
-	    tm_cost, _, lm_cost, _ = sess.run([m_tm_cost, m_tm_train, m_lm_cost, m_lm_train], \
-	        {model.y: y, model.tm_mask: m, model.doc: d, model.tag: t})
-
+		tm_cost=m_tm_cost
+		lm_cost=m_lm_cost
+	    # tm_cost, _, lm_cost, _ = sess.run([m_tm_cost, m_tm_train, m_lm_cost, m_lm_train], \
+	        # {model.y: y, model.tm_mask: m, model.doc: d, model.tag: t})
+	print tm_cost
+	print "hi555"
 	if tm_cost != None:
 		tm_costs += tm_cost * cf.batch_size #keep track of full batch loss (not per example batch loss)
 		tm_words += np.sum(m)
 	if lm_cost != None:
-    	lm_costs += lm_cost * cf.batch_size
+		lm_costs += lm_cost * cf.batch_size
 		lm_words += np.sum(m)
 
+	tm_train.varFunc(y,m,d,t)
+
 	return tm_costs, tm_words, lm_costs, lm_words
+
 
 def run_epoch(sents, docs, labels, tags, models, is_training):
 
@@ -85,14 +98,25 @@ valid_sents, valid_docs, valid_docids, valid_stats = gen_data(vocabxid, cf.dummy
 
 num_classes = 0
 
+
+
+print "hello i am here1"
+print wordvec["the"]
+
+flag=0
+
 tm_train = TM(is_training=True,  vocab_size=len(idxvocab), batch_size=cf.batch_size, num_steps=3, num_classes=num_classes, cf=cf)
 tm_valid = TM(is_training=False, vocab_size=len(idxvocab), batch_size=cf.batch_size, num_steps=3, num_classes=num_classes, cf=cf)
 
-tm_train.conv_word_embedding = torch.from_numpy(init_embedding(mword, idxvocab))
+tm_train.conv_word_embedding = torch.from_numpy(init_embedding(wordvec, idxvocab))
+
 
 for i in range(cf.epoch_size):
-	run_epoch(train_sents, train_docs, train_labels, train_tags, (tm_train, lm_train), True)
-	curr_ppl = run_epoch(valid_sents, valid_docs, valid_labels, valid_tags, (tm_valid, lm_valid), False)
+	print "hello i am here2"
+	run_epoch(train_sents, train_docs, None, None, (tm_train, None), True)
+	print "hello i am here3"
+	curr_ppl = run_epoch(valid_sents, valid_docs, None, None, (tm_valid, None), False)
+
 
 if cf.topic_number > 0:
 	print "\nTopics\n======"

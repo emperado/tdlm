@@ -12,7 +12,6 @@ def pad(lst, max_len, pad_symbol):
 
 def get_batch(sents, docs, tags, idx, doc_len, sent_len, tag_len, batch_size, pad_id, remove_curr):
     x, y, m, d, t = [], [], [], [], []
-
     for docid, seqid, seq in sents[(idx*batch_size):((idx+1)*batch_size)]:
         if remove_curr:
             dw = docs[docid][:seqid] + docs[docid][(seqid+1):]
@@ -27,23 +26,24 @@ def get_batch(sents, docs, tags, idx, doc_len, sent_len, tag_len, batch_size, pa
             t.append(pad(tags[docid][:tag_len], tag_len, pad_id))
         else:
             t.append([])
-
-    for _ in xrange(batch_size - len(d)):
+    print len(d)
+    for i in range(batch_size - len(d)):
         d.append([pad_id]*doc_len)
         x.append([pad_id]*sent_len)
         y.append([pad_id]*sent_len)
         m.append([0.0]*sent_len)
         t.append([pad_id]*tag_len)
 
-	return x, y, m, d, t
+    # print "bava "+batch_size
+    return x, y, m, d, t
 
 def update_vocab(symbol, idxvocab, vocabxid):
     idxvocab.append(symbol)
-    vocabxid[symbol] = len(idxvocab) - 1 
+    vocabxid[symbol] = len(idxvocab) - 1
 
 def gen_data(vocabxid, dummy_symbols, ignore, corpus):
 	sents = ([], []) #tuple of (tm_sents, lm_sents); each element is [(doc_id, seq_id, seq)]
-	docs = ([], []) 
+	docs = ([], [])
 	sent_lens = [] #original sentence lengths
 	doc_lens = [] #original document lengths
 	docids = [] #original document IDs
