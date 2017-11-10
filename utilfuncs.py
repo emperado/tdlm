@@ -7,6 +7,36 @@ import numpy as np
 from collections import defaultdict
 import constants as cf
 
+def pad(lst, max_len, pad_symbol):
+    return lst + [pad_symbol] * (max_len - len(lst))
+
+def get_batch(sents, docs, tags, idx, doc_len, sent_len, tag_len, batch_size, pad_id, remove_curr):
+    x, y, m, d, t = [], [], [], [], []
+
+    for docid, seqid, seq in sents[(idx*batch_size):((idx+1)*batch_size)]:
+        if remove_curr:
+            dw = docs[docid][:seqid] + docs[docid][(seqid+1):]
+        else:
+            dw = docs[docid]
+        dw = [item for sublst in dw for item in sublst][:doc_len]
+        d.append(pad(dw, doc_len, pad_id))
+        x.append(pad(seq[:-1], sent_len, pad_id))
+        y.append(pad(seq[1:], sent_len, pad_id))
+        m.append([1.0]*(len(seq)-1) + [0.0]*(sent_len-len(seq)+1))
+        if tags != None:
+            t.append(pad(tags[docid][:tag_len], tag_len, pad_id))
+        else:
+            t.append([])
+
+    for _ in xrange(batch_size - len(d)):
+        d.append([pad_id]*doc_len)
+        x.append([pad_id]*sent_len)
+        y.append([pad_id]*sent_len)
+        m.append([0.0]*sent_len)
+        t.append([pad_id]*tag_len)
+
+	return x, y, m, d, t
+
 def update_vocab(symbol, idxvocab, vocabxid):
     idxvocab.append(symbol)
     vocabxid[symbol] = len(idxvocab) - 1 

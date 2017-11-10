@@ -1,0 +1,6 @@
+improvisation can be done with tokenisations
+ignore words
+
+hyper parameters
+h=[2]
+conv_activation identity in paper relu optional
